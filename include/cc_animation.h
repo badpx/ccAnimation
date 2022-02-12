@@ -36,20 +36,20 @@ namespace anim
         virtual void Resume() { state_ = State::kStarted; }
 
         void SetStateListener(std::function<void(State)> listener) {
-            listener_ = listener;
+            state_listener_ = listener;
         }
 
         std::function<void(State)> GetStateListener() const {
-            return listener_;
+            return state_listener_;
         }
 
     protected:
         /**
          * @brief This pure virtual function is called every time the animation's currentTime changes.
          *
-         * @param currentTime current time in milliseconds.
+         * @param current_time current time in milliseconds.
          */
-        virtual void UpdateCurrentTime(long currentTime) = 0;
+        virtual void UpdateCurrentTime(long current_time) = 0;
 
         /**
          * @brief This virtual function is called by Animation when the direction of the animation
@@ -62,14 +62,14 @@ namespace anim
          * @brief This virtual function is called by Animation when the state of the animation
          * is changed from oldState to newState.
          *
-         * @param newState the new state.
-         * @param oldState the old state.
+         * @param new_state the new state.
+         * @param old_state the old state.
          */
-        virtual void UpdateState(State newState, State oldState);
+        virtual void UpdateState(State new_state, State old_state);
 
     private:
         State state_ = State::kStopped;
         Direction direction_ = Direction::kForward;
-        std::function<void(State)> listener_;
+        std::function<void(State)> state_listener_;
     };
 } // namespace

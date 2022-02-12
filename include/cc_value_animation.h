@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cc_animation.h"
+#include "cc_keyframe.h"
 
 namespace anim
 {
@@ -22,7 +23,25 @@ namespace anim
         void SetRepeatMode(RepeatMode mode) { repeat_mode_ = mode; }
 
     protected:
-        void UpdateCurrentTime(long currentTime) override;
+        void UpdateCurrentTime(long current_time) override {
+        }
+
+        void AnimateValue(float fraction) {
+        }
+
+        bool AnimationFrame(long current_time) {
+
+        }
+
+        /**
+         * @brief Processes a frame of the animation, adjusting the start time if needed.
+         * 
+         * @param frame_time  The frame time.
+         * @return true  if the animation has ended.
+         */
+        bool DoAnimationFrame(long frame_time) {
+
+        }
 
     private:
         long duration_;

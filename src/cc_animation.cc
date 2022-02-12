@@ -2,11 +2,11 @@
 
 namespace anim
 {
-    void Animation::UpdateState(State newState, State oldState)
+    void Animation::UpdateState(State new_state, State old_state)
     {
-        state_ = newState;
-        if (listener_) {
-            listener_(state_);
+        state_ = new_state;
+        if (state_listener_) {
+            state_listener_(state_);
         }
     }
 }

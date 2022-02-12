@@ -1,2 +1,2 @@
 # ccAnimation
-A lightweight animation framework written in morden C++.
+A lightweight animation framework written in modern C++.
