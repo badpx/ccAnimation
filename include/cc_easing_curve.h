@@ -4,7 +4,7 @@
 
 namespace anim
 {
-    enum class CurveType
+    enum class CurveType : int
     {
         Linear,
         InQuad,
@@ -59,12 +59,10 @@ namespace anim
     public:
 
         EasingCurve(CurveType type);
-        virtual float ValueForProgress(float progress) const;
+        EasingCurve(CurveFunction func) : func_(func) {}
+        float ValueForProgress(float progress) const;
 
     private:
-        CurveType type_;
         CurveFunction func_;
     };
-
-    EasingCurve *GetCurveInstance(CurveType type);
 }

@@ -79,17 +79,9 @@ namespace anim
         };
     }
 
-    EasingCurve *GetCurveInstance(CurveType type) {
-        static std::map<CurveType, EasingCurve> s_curve_cache;
-        auto it = s_curve_cache.find(type);
-        if (it == s_curve_cache.end()) {
-            s_curve_cache.emplace(std::make_pair(type, CurveToFunc(type)));
-        }
-    }
-
-    EasingCurve::EasingCurve(CurveType type) : type_(type), func_(CurveToFunc(type)) {}
+    EasingCurve::EasingCurve(CurveType type) : func_(CurveToFunc(type)) {}
 
     float EasingCurve::ValueForProgress(float progress) const { 
-        return func_(progress);
+        return func_ ? func_(progress) : progress;
     }
 }

@@ -24,6 +24,34 @@
 namespace anim
 {
     template <typename T>
+    typename std::enable_if<std::is_unsigned<T>::value, T>::type
+    _interpolate(const T &start, const T &end, float progress) {
+        return T(start + end * progress - start * progress);
+    }
+
+    // the below will apply also end all non-arithmetic types
+    template <typename T>
+    typename std::enable_if<!std::is_unsigned<T>::value, T>::type
+    _interpolate(const T &start, const T &end, float progress) {
+        return T(start + (end - start) * progress);
+    }
+
+    /**
+     * @brief  This function returns the result of linearly interpolating the start and end values, with
+     * <code>progress</code> representing the proportion between the start and end values. The
+     * calculation is a simple parametric calculation: <code>result = start + (end - start) * progress </code>
+     *
+     * @tparam T The type of start and end value, must have a default constructor!
+     * @param start The start value.
+     * @param end The end value.
+     * @param progress The progress from the starting end the ending values.
+     * @return T T A linear interpolation between the start and end values, given the <code>progress</code> parameter.
+     */
+    template <typename T> inline T InterpolateValue(const T& start, const T& end, float progress) {
+        return _interpolate(start, end, progress);
+    }
+
+    template <typename T>
     class ValueAnimation : public Animation
     {
     public:
@@ -79,21 +107,7 @@ namespace anim
         void set_repeat_count(int count) { repeat_count_ = count; }
         RepeatMode repeat_mode() const { return repeat_mode_; }
         void set_repeat_mode(RepeatMode mode) { repeat_mode_ = mode; }
-        void set_curve_function(EasingCurve::CurveFunction func) { curve_function_ = func; }
-
-    protected:
-        void UpdateCurrentTime(long current_time) override {
-        }
-
-        void AnimateValue(float progress) {
-            // can't interpolate if we don't have at least 2 values
-            if (keyframes_.count() < 2) return;
-
-        }
-
-        bool AnimationFrame(long current_time) {
-
-        }
+        void set_easing_curve(std::shared_ptr<EasingCurve> curve) { easing_curve_ = curve; }
 
         /**
          * @brief Processes a frame of the animation, adjusting the start time if needed.
@@ -105,39 +119,82 @@ namespace anim
 
         }
 
+    protected:
+        void UpdateCurrentTime(long current_time) override {
+        }
+
+        T AnimateValue(float progress)
+        {
+            size_t num_keyframes = keyframes_.size();
+            // can't interpolate if we don't have at least 2 values
+            if (num_keyframes < 2) return T();
+
+            Keyframe<T> &first_keyframe = keyframes_[0];
+            Keyframe<T> &last_keyframe = keyframes_[num_keyframes - 1];
+            // Special-case optimization for the common case of only two keyframes
+            if (num_keyframes == 2) {
+                auto easing_curve = last_keyframe.easing_curve();
+                if (easing_curve != nullptr) {
+                    progress = easing_curve->ValueForProgress(progress);
+                }
+                return InterpolateValue<T>(progress, first_keyframe.value(), last_keyframe.value());
+            }
+
+            if (progress <= 0.0f) {
+                const Keyframe<T> &next_keyframe = keyframes_[1];
+                auto easing_curve = next_keyframe.easing_curve();
+                if (easing_curve != nullptr) {
+                    progress = easing_curve->ValueForProgress(progress);
+                }
+                const float prev_progress = first_keyframe.progress();
+                float interval_progress = (progress - prev_progress) /
+                                         (next_keyframe.progress() - prev_progress);
+                return InterpolateValue<T>(interval_progress, first_keyframe.value(), next_keyframe.value());
+            }
+            else if (progress >= 1.0f)
+            {
+                const Keyframe<T> &prev_keyframe = keyframes_[num_keyframes - 2];
+                auto easing_curve = last_keyframe.easing_curve();
+                if (easing_curve != nullptr) {
+                    progress = easing_curve->ValueForProgress(progress);
+                }
+                const float prev_progress = prev_keyframe.progress();
+                float interval_progress = (progress - prev_progress) /
+                                         (last_keyframe.progress() - prev_progress);
+                return InterpolateValue<T>(interval_progress, prev_keyframe.value(), last_keyframe.value());
+            }
+            /*Keyframe<T> current;
+            current.set_progress(progress);
+            auto it = std::lower_bound(keyframes_.begin(), keyframes_.end(), current);*/
+            Keyframe<T> &prev_keyframe = first_keyframe;
+            for (int i = 1; i < num_keyframes; ++i)
+            {
+                Keyframe<T> &next_keyframe = keyframes_[i];
+                if (progress < next_keyframe.progress())
+                {
+                    const float prev_progress = prev_keyframe.progress();
+                    float interval_progress = (progress - prev_progress) /
+                                             (next_keyframe.progress() - prev_progress);
+                    auto easing_curve = next_keyframe.easing_curve();
+                    // Apply interpolator on the proportional duration.
+                    if (easing_curve != nullptr) {
+                        interval_progress = easing_curve->ValueForProgress(interval_progress);
+                    }
+                    return InterpolateValue<T>(interval_progress, prev_keyframe.value(), next_keyframe.value());
+                }
+                prev_keyframe = next_keyframe;
+            }
+        }
+
+        bool AnimationFrame(long current_time) {
+
+        }
+
     private:
         std::vector<Keyframe<T>> keyframes_;
-        EasingCurve::CurveFunction curve_function_ = EasingCurve::CurveToFunc(EasingCurve::InOutQuad);
+        std::shared_ptr<EasingCurve> easing_curve_= std::make_shared<EasingCurve>(CurveType::InOutQuad);
         long duration_;
         RepeatMode repeat_mode_ = RepeatMode::kRestart;
         int repeat_count_ = 0;
     };
-
-    template <typename T>
-    typename std::enable_if<std::is_unsigned<T>::value, T>::type
-    _interpolate(const T &start, const T &end, float progress) {
-        return T(start + end * progress - start * progress);
-    }
-
-    // the below will apply also end all non-arithmetic types
-    template <typename T>
-    typename std::enable_if<!std::is_unsigned<T>::value, T>::type
-    _interpolate(const T &start, const T &end, float progress) {
-        return T(start + (end - start) * progress);
-    }
-
-    /**
-     * @brief  This function returns the result of linearly interpolating the start and end values, with
-     * <code>progress</code> representing the proportion between the start and end values. The
-     * calculation is a simple parametric calculation: <code>result = start + (end - start) * progress </code>
-     *
-     * @tparam T The type of start and end value.
-     * @param start The start value.
-     * @param end The end value.
-     * @param progress The progress from the starting end the ending values.
-     * @return T T A linear interpolation between the start and end values, given the <code>progress</code> parameter.
-     */
-    template <typename T> inline T InterpolateValue(const T& start, const T& end, float progress) {
-        return _interpolate(start, end, progress);
-    }
 }
