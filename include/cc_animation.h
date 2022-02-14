@@ -1,3 +1,18 @@
+/**
+ * @file cc_animation.h
+ * @brief
+ * @version 0.1
+ * @date 2022-02-13
+ *
+ * @copyright Copyright (c) 2022 Kane Dong
+ * All rights reserved.
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ **/
 #pragma once
 #include <functional>
 
@@ -16,7 +31,7 @@ namespace anim
         enum class State
         {
             kStopped,
-            kStarted,
+            kRunning,
             kPaused,
         };
 
@@ -24,16 +39,16 @@ namespace anim
 
         virtual void SetDuration(long duration) = 0;
         virtual long GetDuration() const = 0;
-        void SetDirection(Direction direction) { direction_ = direction; }
-        Direction GetDirection() const { return direction_; }
+        void set_direction(Direction direction) { direction_ = direction; }
+        Direction direction() const { return direction_; }
 
-        State GetState() const { return state_; }
+        State state() const { return state_; }
 
-        virtual void Start() { state_ = State::kStarted; }
+        virtual void Start() { state_ = State::kRunning; }
         virtual void Stop() { state_ = State::kStopped; }
         virtual void Cancel() { state_ = State::kStopped; }
         virtual void Pause() { state_ = State::kPaused; }
-        virtual void Resume() { state_ = State::kStarted; }
+        virtual void Resume() { state_ = State::kRunning; }
 
         void SetStateListener(std::function<void(State)> listener) {
             state_listener_ = listener;
