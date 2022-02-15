@@ -10,72 +10,72 @@ namespace anim
         switch (type)
         {
         case CurveType::InQuad:
-            return easeInQuad;
+            return &easeInQuad;
         case CurveType::OutQuad:
-            return easeOutQuad;
+            return &easeOutQuad;
         case CurveType::InOutQuad:
-            return easeInOutQuad;
+            return &easeInOutQuad;
         case CurveType::OutInQuad:
-            return easeOutInQuad;
+            return &easeOutInQuad;
         case CurveType::InCubic:
-            return easeInCubic;
+            return &easeInCubic;
         case CurveType::OutCubic:
-            return easeOutCubic;
+            return &easeOutCubic;
         case CurveType::InOutCubic:
-            return easeInOutCubic;
+            return &easeInOutCubic;
         case CurveType::OutInCubic:
-            return easeOutInCubic;
+            return &easeOutInCubic;
         case CurveType::InQuart:
-            return easeInQuart;
+            return &easeInQuart;
         case CurveType::OutQuart:
-            return easeOutQuart;
+            return &easeOutQuart;
         case CurveType::InOutQuart:
-            return easeInOutQuart;
+            return &easeInOutQuart;
         case CurveType::OutInQuart:
-            return easeOutInQuart;
+            return &easeOutInQuart;
         case CurveType::InQuint:
-            return easeInQuint;
+            return &easeInQuint;
         case CurveType::OutQuint:
-            return easeOutQuint;
+            return &easeOutQuint;
         case CurveType::InOutQuint:
-            return easeInOutQuint;
+            return &easeInOutQuint;
         case CurveType::OutInQuint:
-            return easeOutInQuint;
+            return &easeOutInQuint;
         case CurveType::InSine:
-            return easeInSine;
+            return &easeInSine;
         case CurveType::OutSine:
-            return easeOutSine;
+            return &easeOutSine;
         case CurveType::InOutSine:
-            return easeInOutSine;
+            return &easeInOutSine;
         case CurveType::OutInSine:
-            return easeOutInSine;
+            return &easeOutInSine;
         case CurveType::InExpo:
-            return easeInExpo;
+            return &easeInExpo;
         case CurveType::OutExpo:
-            return easeOutExpo;
+            return &easeOutExpo;
         case CurveType::InOutExpo:
-            return easeInOutExpo;
+            return &easeInOutExpo;
         case CurveType::OutInExpo:
-            return easeOutInExpo;
+            return &easeOutInExpo;
         case CurveType::InCirc:
-            return easeInCirc;
+            return &easeInCirc;
         case CurveType::OutCirc:
-            return easeOutCirc;
+            return &easeOutCirc;
         case CurveType::InOutCirc:
-            return easeInOutCirc;
+            return &easeInOutCirc;
         case CurveType::OutInCirc:
-            return easeOutInCirc;
+            return &easeOutInCirc;
         case CurveType::InCurve:
-            return easeInCurve;
+            return &easeInCurve;
         case CurveType::OutCurve:
-            return easeOutCurve;
+            return &easeOutCurve;
         case CurveType::SineCurve:
-            return easeSineCurve;
+            return &easeSineCurve;
         case CurveType::CosineCurve:
-            return easeCosineCurve;
+            return &easeCosineCurve;
         case CurveType::Linear:
         default:
-            return easeNone;
+            return &easeNone;
         };
     }
 

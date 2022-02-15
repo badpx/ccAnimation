@@ -15,7 +15,6 @@
  **/
 #pragma once
 
-#include <memory>
 #include "cc_easing_curve.h"
 
 namespace anim
@@ -25,20 +24,21 @@ namespace anim
     {
     public:
         Keyframe() = default;
-        Keyframe(float progress, const T &value, const std::shared_ptr<EasingCurve> &curve = nullptr)
+        Keyframe(float progress, const T &value, 
+                const EasingCurve &curve = EasingCurve(CurveType::Linear))
             : easing_curve_(curve), progress_(progress), value_(value) {}
         float progress() const { return progress_; }
         T value() const { return value_; }
         void set_progress(float progress) { progress_ = progress; }
         void set_value(const T &value) { value_ = value; }
         void set_easing_curve(EasingCurve curve) { easing_curve_ = curve; }
-        std::shared_ptr<EasingCurve> easing_curve() const { return easing_curve_; }
+        EasingCurve easing_curve() const { return easing_curve_; }
 
         // Support operator '<' for sorting
         bool operator<(const Keyframe &other) const { return progress_ < other.progress_; }
 
     private:
-        std::shared_ptr<EasingCurve> easing_curve_;
+        EasingCurve easing_curve_;
         float progress_;
         T value_;
     };

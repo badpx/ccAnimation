@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <initializer_list>
+#include <type_traits>
 #include <vector>
 #include "cc_animation.h"
 #include "cc_keyframe.h"
@@ -41,7 +42,7 @@ namespace anim
      * <code>progress</code> representing the proportion between the start and end values. The
      * calculation is a simple parametric calculation: <code>result = start + (end - start) * progress </code>
      *
-     * @tparam T The type of start and end value, must have a default constructor!
+     * @tparam T The type of start and end value
      * @param start The start value.
      * @param end The end value.
      * @param progress The progress from the starting end the ending values.
@@ -54,6 +55,8 @@ namespace anim
     template <typename T>
     class ValueAnimation : public Animation
     {
+        static_assert(std::is_default_constructible<T>::value, "T must have a default constructor!");
+
     public:
         enum class RepeatMode
         {
@@ -61,6 +64,7 @@ namespace anim
             kReverse,
         };
 
+        ValueAnimation() = delete;
         ValueAnimation(const T &start_value, const T &end_value)
             : ValueAnimation({start_value, end_value}) {}
 

@@ -53,7 +53,7 @@ namespace anim
         CosineCurve,
     };
 
-    using CurveFunction = std::function<float(float)>;
+    using CurveFunction = float(*)(float);
     class EasingCurve
     {
     public:
