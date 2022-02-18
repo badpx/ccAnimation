@@ -15,10 +15,12 @@
  **/
 #pragma once
 #include <functional>
+#include <memory>
+#include <list>
 
 namespace anim
 {
-
+    class AnimationListener;
     class Animation
     {
     public:
@@ -58,6 +60,19 @@ namespace anim
             return state_listener_;
         }
 
+        void AddAnimationListener(const std::shared_ptr<AnimationListener>& listener) {
+            if (nullptr == listeners_) {
+                listeners_ = decltype(listeners_)(new std::list<std::shared_ptr<AnimationListener>>());
+            }
+            listeners_->push_back(listener);
+        }
+
+        void RemoveAnimationListener(const std::shared_ptr<AnimationListener>& listener) {
+            if (listeners_) {
+                listeners_->remove_if([&listener](const std::shared_ptr<AnimationListener>& n) -> bool { return n == listener; });
+            }
+        }
+
     protected:
         /**
          * @brief This pure virtual function is called every time the animation's currentTime changes.
@@ -82,9 +97,20 @@ namespace anim
          */
         virtual void UpdateState(State new_state, State old_state);
 
-    private:
+        std::unique_ptr<std::list<std::shared_ptr<AnimationListener>>> listeners_ = nullptr;
+        bool paused_ = false;
         State state_ = State::kStopped;
+    private:
         Direction direction_ = Direction::kForward;
         std::function<void(State)> state_listener_;
+    };
+
+    class AnimationListener {
+        virtual void OnAnimationStart(Animation &animation) {}
+        virtual void OnAnimationEnd(Animation &animation) {}
+        virtual void OnAnimationCancel(Animation &animation) {}
+        virtual void OnAnimationRepeat(Animation &animation) {}
+        virtual void OnAnimationPause(Animation &animation) {}
+        virtual void OnAnimationResume(Animation &animation) {}
     };
 } // namespace

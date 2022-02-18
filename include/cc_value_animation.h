@@ -16,6 +16,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <initializer_list>
 #include <type_traits>
 #include <vector>
@@ -64,6 +65,8 @@ namespace anim
             kReverse,
         };
 
+        static const int INFINITE = -1;
+
         ValueAnimation() = delete;
         ValueAnimation(const T &start_value, const T &end_value)
             : ValueAnimation({start_value, end_value}) {}
@@ -111,7 +114,7 @@ namespace anim
         void set_repeat_count(int count) { repeat_count_ = count; }
         RepeatMode repeat_mode() const { return repeat_mode_; }
         void set_repeat_mode(RepeatMode mode) { repeat_mode_ = mode; }
-        void set_easing_curve(std::shared_ptr<EasingCurve> curve) { easing_curve_ = curve; }
+        void set_easing_curve(const EasingCurve &curve) { easing_curve_ = curve; }
 
         /**
          * @brief Processes a frame of the animation, adjusting the start time if needed.
@@ -120,7 +123,25 @@ namespace anim
          * @return true  if the animation has ended.
          */
         bool DoAnimationFrame(long frame_time) {
+            if (state_ == State::kStopped) {
+                state_ = State::kRunning;
+                start_time_ = frame_time;
+            }
 
+            if (paused_) {
+                if (pause_time_ < 0) {
+                    pause_time_ = frame_time;
+                }
+                return false;
+            } else if (resumed_) {
+                resumed_ = false;
+                if (pause_time_ > 0) {
+                    start_time_ += (frame_time - pause_time_);
+                }
+            }
+
+            const long current_time = std::max(frame_time, start_time_);
+            return AnimationFrame(current_time);
         }
 
     protected:
@@ -190,15 +211,61 @@ namespace anim
             }
         }
 
+        /**
+         * This internal function processes a single animation frame for a given animation. The
+         * currentTime parameter is the timing pulse sent by the handler, used to calculate the
+         * elapsed duration, and therefore
+         * the elapsed processes, of the animation. The return value indicates whether the animation
+         * should be ended (which happens when the elapsed time of the animation exceeds the
+         * animation's duration, including the repeatCount).
+         *
+         * @param currentTime The current time, as tracked by the static timing handler
+         * @return true if the animation's duration, including any repetitions due to
+         * <code>repeatCount</code>, has been exceeded and the animation should be ended.
+         */
         bool AnimationFrame(long current_time) {
-
+            bool done = false;
+            switch (state_) {
+                case State::kRunning:
+                    float progress = 
+                        duration_ > 0 ? (float)(current_time - start_time_) / duration_ : 1.0f;
+                    if (progress >= 1) {
+                        if (listeners_) {
+                            for (auto n : listeners_) {
+                                n->OnAnimationRepeat(*this);
+                            }
+                            if (RepeatMode::kReverse == repeat_mode_) {
+                                playing_backwards_ = !playing_backwards_;
+                            }
+                            current_iteration_ += (int)progress;
+                            progress = fmod(progress, 1.0f);
+                            start_time_ = duration_;
+                        } else {
+                            done = true;
+                            progress = fmin(progress, 1.0f);
+                        }
+                    }
+                    if (playing_backwards_) {
+                        progress = 1.0f - progress;
+                    }
+                    AnimateValue(progress);
+                    break;
+            }
+            return done;
         }
 
     private:
         std::vector<Keyframe<T>> keyframes_;
-        std::shared_ptr<EasingCurve> easing_curve_= std::make_shared<EasingCurve>(CurveType::InOutQuad);
-        long duration_;
+        EasingCurve easing_curve_= EasingCurve(CurveType::InOutQuad);
+        long start_time_ = 0L;
+        long start_delay_= 0L;
+        long pause_time_ = 0L;
+        long duration_ = 300L;
+
+        bool resumed_ = false;
+        bool playing_backwards_ = false;
         RepeatMode repeat_mode_ = RepeatMode::kRestart;
         int repeat_count_ = 0;
+        int current_iteration_ = 0;
     };
 }
