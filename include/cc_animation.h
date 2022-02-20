@@ -37,20 +37,33 @@ namespace anim
             kPaused,
         };
 
+        enum class LoopMode
+        {
+            kRestart,
+            kReverse,
+        };
+
+        static const int INFINITE = -1;
+
         virtual ~Animation() = default;
 
         virtual void SetDuration(long duration) = 0;
         virtual long GetDuration() const = 0;
+        long GetTotalDuration() const;
         void set_direction(Direction direction) { direction_ = direction; }
         Direction direction() const { return direction_; }
+        int loop_count() const { return loop_count_; }
+        void set_loop_count(int count) { loop_count_ = count; }
+        LoopMode loop_mode() const { return loop_mode_; }
+        void set_loop_mode(LoopMode mode) { loop_mode_ = mode; }
 
         State state() const { return state_; }
 
-        virtual void Start() { state_ = State::kRunning; }
-        virtual void Stop() { state_ = State::kStopped; }
-        virtual void Cancel() { state_ = State::kStopped; }
-        virtual void Pause() { state_ = State::kPaused; }
-        virtual void Resume() { state_ = State::kRunning; }
+        virtual void Start();
+        virtual void Stop();
+        virtual void Cancel();
+        virtual void Pause();
+        virtual void Resume();
 
         void SetStateListener(std::function<void(State)> listener) {
             state_listener_ = listener;
@@ -73,7 +86,19 @@ namespace anim
             }
         }
 
+        void SetCurrentTime(long msecs);
+        long GetCurrentTime() const { return current_time_; }
+
+        /**
+         * @brief Processes a frame of the animation, adjusting the start time if needed.
+         * 
+         * @param frame_time  The frame time.
+         * @return true  if the animation has ended.
+         */
+        void UpdateAnimationFrame(long frame_time);
+
     protected:
+        void SetState(State state);
         /**
          * @brief This pure virtual function is called every time the animation's currentTime changes.
          *
@@ -100,12 +125,21 @@ namespace anim
         std::unique_ptr<std::list<std::shared_ptr<AnimationListener>>> listeners_ = nullptr;
         bool paused_ = false;
         State state_ = State::kStopped;
-    private:
+    // private:
         Direction direction_ = Direction::kForward;
         std::function<void(State)> state_listener_;
+        LoopMode loop_mode_ = LoopMode::kRestart;
+        long start_time_ = 0L;
+        long pause_time_ = 0L;
+        long last_update_time_ = -1L;
+        long current_time_ = 0L;
+        long total_current_time_ = 0L;
+        int loop_count_ = 1;
+        int current_loop_ = 0;
+        bool resumed_ = false;
     };
 
-    class AnimationListener {
+    struct AnimationListener {
         virtual void OnAnimationStart(Animation &animation) {}
         virtual void OnAnimationEnd(Animation &animation) {}
         virtual void OnAnimationCancel(Animation &animation) {}

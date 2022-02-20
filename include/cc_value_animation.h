@@ -14,12 +14,13 @@
  *    this software without specific prior written permission.
  **/
 #pragma once
-
 #include <algorithm>
 #include <cmath>
 #include <initializer_list>
 #include <type_traits>
+#include <utility>
 #include <vector>
+
 #include "cc_animation.h"
 #include "cc_keyframe.h"
 
@@ -52,6 +53,11 @@ namespace anim
     template <typename T> inline T InterpolateValue(const T& start, const T& end, float progress) {
         return _interpolate(start, end, progress);
     }
+    template <typename T>
+    struct ValueUpdateListener
+    {
+        virtual void OnUpdate(T value) = 0;
+    };
 
     template <typename T>
     class ValueAnimation : public Animation
@@ -59,13 +65,9 @@ namespace anim
         static_assert(std::is_default_constructible<T>::value, "T must have a default constructor!");
 
     public:
-        enum class RepeatMode
-        {
-            kRestart,
-            kReverse,
-        };
 
-        static const int INFINITE = -1;
+        using ValueSubscriber = std::function<void(const T&)>;
+        ValueSubscriber subscriber_;
 
         ValueAnimation() = delete;
         ValueAnimation(const T &start_value, const T &end_value)
@@ -110,162 +112,75 @@ namespace anim
 
         void SetDuration(long duration) override { duration_ = duration; }
         long GetDuration() const override { return duration_; }
-        int repeat_count() const { return repeat_count_; }
-        void set_repeat_count(int count) { repeat_count_ = count; }
-        RepeatMode repeat_mode() const { return repeat_mode_; }
-        void set_repeat_mode(RepeatMode mode) { repeat_mode_ = mode; }
         void set_easing_curve(const EasingCurve &curve) { easing_curve_ = curve; }
-
-        /**
-         * @brief Processes a frame of the animation, adjusting the start time if needed.
-         * 
-         * @param frame_time  The frame time.
-         * @return true  if the animation has ended.
-         */
-        bool DoAnimationFrame(long frame_time) {
-            if (state_ == State::kStopped) {
-                state_ = State::kRunning;
-                start_time_ = frame_time;
-            }
-
-            if (paused_) {
-                if (pause_time_ < 0) {
-                    pause_time_ = frame_time;
-                }
-                return false;
-            } else if (resumed_) {
-                resumed_ = false;
-                if (pause_time_ > 0) {
-                    start_time_ += (frame_time - pause_time_);
-                }
-            }
-
-            const long current_time = std::max(frame_time, start_time_);
-            return AnimationFrame(current_time);
-        }
+        const std::vector<Keyframe<T>> &keyframes() const { return keyframes_; }
 
     protected:
-        void UpdateCurrentTime(long current_time) override {
-        }
-
-        T AnimateValue(float progress)
-        {
-            size_t num_keyframes = keyframes_.size();
+        void RecalculateCurrentInterval(bool force = false) {
             // can't interpolate if we don't have at least 2 values
-            if (num_keyframes < 2) return T();
-
-            Keyframe<T> &first_keyframe = keyframes_[0];
-            Keyframe<T> &last_keyframe = keyframes_[num_keyframes - 1];
-            // Special-case optimization for the common case of only two keyframes
-            if (num_keyframes == 2) {
-                auto easing_curve = last_keyframe.easing_curve();
-                if (easing_curve != nullptr) {
-                    progress = easing_curve->ValueForProgress(progress);
-                }
-                return InterpolateValue<T>(progress, first_keyframe.value(), last_keyframe.value());
-            }
-
-            if (progress <= 0.0f) {
-                const Keyframe<T> &next_keyframe = keyframes_[1];
-                auto easing_curve = next_keyframe.easing_curve();
-                if (easing_curve != nullptr) {
-                    progress = easing_curve->ValueForProgress(progress);
-                }
-                const float prev_progress = first_keyframe.progress();
-                float interval_progress = (progress - prev_progress) /
-                                         (next_keyframe.progress() - prev_progress);
-                return InterpolateValue<T>(interval_progress, first_keyframe.value(), next_keyframe.value());
-            }
-            else if (progress >= 1.0f)
-            {
-                const Keyframe<T> &prev_keyframe = keyframes_[num_keyframes - 2];
-                auto easing_curve = last_keyframe.easing_curve();
-                if (easing_curve != nullptr) {
-                    progress = easing_curve->ValueForProgress(progress);
-                }
-                const float prev_progress = prev_keyframe.progress();
-                float interval_progress = (progress - prev_progress) /
-                                         (last_keyframe.progress() - prev_progress);
-                return InterpolateValue<T>(interval_progress, prev_keyframe.value(), last_keyframe.value());
-            }
-            /*Keyframe<T> current;
-            current.set_progress(progress);
-            auto it = std::lower_bound(keyframes_.begin(), keyframes_.end(), current);*/
-            Keyframe<T> &prev_keyframe = first_keyframe;
-            for (int i = 1; i < num_keyframes; ++i)
-            {
-                Keyframe<T> &next_keyframe = keyframes_[i];
-                if (progress < next_keyframe.progress())
-                {
-                    const float prev_progress = prev_keyframe.progress();
-                    float interval_progress = (progress - prev_progress) /
-                                             (next_keyframe.progress() - prev_progress);
-                    auto easing_curve = next_keyframe.easing_curve();
-                    // Apply interpolator on the proportional duration.
-                    if (easing_curve != nullptr) {
-                        interval_progress = easing_curve->ValueForProgress(interval_progress);
+            if (keyframes_.size() < 2) return;
+            const float end_progress = (direction() == Direction::kForward) ? 1.0f : 0.0f;
+            const float progress = easing_curve_.ValueForProgress(((duration_ == 0) ? end_progress : float(GetCurrentTime()) / float(duration_)));
+            // 0 and 1 are still the boundaries
+            if (force
+                || (current_interval_.start.progress() > 0 && progress < current_interval_.start.progress())
+                || (current_interval_.end.progress() < 1 && progress > current_interval_.end.progress())) {
+                // let's update current_interval_
+                auto it = std::lower_bound(keyframes_.cbegin(), keyframes_.cend(),
+                                           Keyframe<T>(progress, T()));
+                if (it == keyframes_.cbegin()) {
+                    // the item pointed to by it is the start element in the range
+                    if (it->progress() == 0) {
+                        current_interval_.start = *it;
+                        current_interval_.end = *(it + 1);
                     }
-                    return InterpolateValue<T>(interval_progress, prev_keyframe.value(), next_keyframe.value());
+                } else if (it == keyframes_.cend()) {
+                    --it; // position the iterator on the last item
+                    if (it->progress() == 1) {
+                        // we have an end value (item with progress = 1)
+                        current_interval_.start = *(it - 1);
+                        current_interval_.end = *it;
+                    }
+                } else {
+                    current_interval_.start = *(it - 1);
+                    current_interval_.end = *it;
                 }
-                prev_keyframe = next_keyframe;
+            }
+            SetCurrentValueForProgress(progress);
+        }
+
+        void SetCurrentValueForProgress(const float progress) {
+            const float start_progress = current_interval_.start.progress();
+            const float end_progress = current_interval_.end.progress();
+            const float local_progress = (progress - start_progress) / (end_progress - start_progress);
+            T ret = InterpolateValue<T>(current_interval_.start.value(), current_interval_.end.value(), local_progress);
+            std::swap(current_value_, ret);
+
+            UpdateCurrentValue(current_value_);
+            // TODO: notify the value has changed
+            if (current_value_ != ret) {
+                if (subscriber_) {
+                    subscriber_(current_value_);
+                }
             }
         }
 
-        /**
-         * This internal function processes a single animation frame for a given animation. The
-         * currentTime parameter is the timing pulse sent by the handler, used to calculate the
-         * elapsed duration, and therefore
-         * the elapsed processes, of the animation. The return value indicates whether the animation
-         * should be ended (which happens when the elapsed time of the animation exceeds the
-         * animation's duration, including the repeatCount).
-         *
-         * @param currentTime The current time, as tracked by the static timing handler
-         * @return true if the animation's duration, including any repetitions due to
-         * <code>repeatCount</code>, has been exceeded and the animation should be ended.
-         */
-        bool AnimationFrame(long current_time) {
-            bool done = false;
-            switch (state_) {
-                case State::kRunning:
-                    float progress = 
-                        duration_ > 0 ? (float)(current_time - start_time_) / duration_ : 1.0f;
-                    if (progress >= 1) {
-                        if (listeners_) {
-                            for (auto n : listeners_) {
-                                n->OnAnimationRepeat(*this);
-                            }
-                            if (RepeatMode::kReverse == repeat_mode_) {
-                                playing_backwards_ = !playing_backwards_;
-                            }
-                            current_iteration_ += (int)progress;
-                            progress = fmod(progress, 1.0f);
-                            start_time_ = duration_;
-                        } else {
-                            done = true;
-                            progress = fmin(progress, 1.0f);
-                        }
-                    }
-                    if (playing_backwards_) {
-                        progress = 1.0f - progress;
-                    }
-                    AnimateValue(progress);
-                    break;
-            }
-            return done;
+        virtual void UpdateCurrentValue(const T& value) {
+        }
+
+        void UpdateCurrentTime(long current_time) override {
+            RecalculateCurrentInterval();
         }
 
     private:
         std::vector<Keyframe<T>> keyframes_;
-        EasingCurve easing_curve_= EasingCurve(CurveType::InOutQuad);
-        long start_time_ = 0L;
-        long start_delay_= 0L;
-        long pause_time_ = 0L;
+        struct {
+            Keyframe<T> start, end;
+        } current_interval_;
+        EasingCurve easing_curve_ = EasingCurve(CurveType::InOutQuad);
+        T current_value_;
         long duration_ = 300L;
-
-        bool resumed_ = false;
         bool playing_backwards_ = false;
-        RepeatMode repeat_mode_ = RepeatMode::kRestart;
-        int repeat_count_ = 0;
         int current_iteration_ = 0;
     };
 }

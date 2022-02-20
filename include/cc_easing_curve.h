@@ -57,12 +57,13 @@ namespace anim
     class EasingCurve
     {
     public:
-
+        EasingCurve() = default;
         EasingCurve(CurveType type);
         EasingCurve(CurveFunction func) : func_(func) {}
         float ValueForProgress(float progress) const;
+        bool IsValid() const { return nullptr != func_; }
 
     private:
-        CurveFunction func_;
+        CurveFunction func_ = nullptr;
     };
 }
