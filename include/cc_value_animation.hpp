@@ -21,8 +21,8 @@
 #include <utility>
 #include <vector>
 
-#include "cc_animation.h"
-#include "cc_keyframe.h"
+#include "cc_animation.hpp"
+#include "cc_keyframe.hpp"
 
 namespace anim
 {

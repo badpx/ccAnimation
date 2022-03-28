@@ -2,6 +2,9 @@
 .vscode/
 *.swp
 
+.idea
+cmake-build*/
+
 # Prerequisites
 *.d
 

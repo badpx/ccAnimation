@@ -14,7 +14,7 @@
  *    this software without specific prior written permission.
  **/
 #include <algorithm>
-#include "cc_animation.h"
+#include "cc_animation.hpp"
 
 namespace anim
 {

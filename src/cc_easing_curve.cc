@@ -1,6 +1,6 @@
 
 #include <map>
-#include "cc_easing_curve.h"
+#include "cc_easing_curve.hpp"
 #include "easing.cc"
 
 namespace anim

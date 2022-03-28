@@ -1,6 +1,6 @@
 #include <chrono>
 #include <thread>
-#include "cc_value_animation.h"
+#include "cc_value_animation.hpp"
 #include <iostream>
 class A {
     public:

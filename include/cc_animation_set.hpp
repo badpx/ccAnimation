@@ -15,7 +15,7 @@
  **/
 #pragma once
 
-#include "cc_animation.h"
+#include "cc_animation.hpp"
 
 namespace anim {
     class AnimationSet : public Animation {

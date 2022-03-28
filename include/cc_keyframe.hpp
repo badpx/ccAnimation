@@ -15,7 +15,7 @@
  **/
 #pragma once
 
-#include "cc_easing_curve.h"
+#include "cc_easing_curve.hpp"
 
 namespace anim
 {
